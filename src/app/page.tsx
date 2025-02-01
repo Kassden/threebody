@@ -58,107 +58,148 @@ export default function Home() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    // Create Bodies
+    // Optimize vector calculations by pre-allocating vectors
+    const tempVector = new THREE.Vector3();
+    const tempForce = new THREE.Vector3();
+    const tempAcceleration = new THREE.Vector3();
+    const tempVelocity = new THREE.Vector3();
+
+    // Use TypedArrays for better performance
+    const positions = new Float32Array(params.numBodies * 3);
+    const velocities = new Float32Array(params.numBodies * 3);
+    const masses = new Float32Array(params.numBodies);
+
+    // Create Bodies with optimized data structure
     const createRandomBody = (index: number) => {
       const radius = 0.2 + Math.random() * 1.5;
       const mass = radius * (0.5 + Math.random() * 1.5);
       const angle = (index / params.numBodies) * Math.PI * 2;
       const distance = 5 + Math.random() * 10;
       
-      const color = new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
+      const i = index * 3;
+      positions[i] = Math.cos(angle) * distance;
+      positions[i + 1] = (Math.random() - 0.5) * 10;
+      positions[i + 2] = Math.sin(angle) * distance;
 
+      velocities[i] = (Math.random() - 0.5) * params.maxInitialVelocity;
+      velocities[i + 1] = (Math.random() - 0.5) * params.maxInitialVelocity;
+      velocities[i + 2] = (Math.random() - 0.5) * params.maxInitialVelocity;
+
+      masses[index] = mass;
+
+      const color = new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
       return {
         mesh: new THREE.Mesh(
-          new THREE.SphereGeometry(radius, 32, 32),
+          new THREE.SphereGeometry(radius, 16, 16), // Reduced geometry complexity
           new THREE.MeshBasicMaterial({ 
             color: color,
             transparent: true,
             opacity: 0.8
           })
         ),
-        position: new THREE.Vector3(
-          Math.cos(angle) * distance,
-          (Math.random() - 0.5) * 10,
-          Math.sin(angle) * distance
-        ),
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * params.maxInitialVelocity,
-          (Math.random() - 0.5) * params.maxInitialVelocity,
-          (Math.random() - 0.5) * params.maxInitialVelocity
-        ),
-        mass,
         trail: [] as THREE.Vector3[]
       };
     };
 
     const bodies = Array.from({ length: params.numBodies }, (_, i) => createRandomBody(i));
 
-    // Add special bodies
+    // Special bodies setup
     [
-      { color: 0xff0000, pos: [0, 0, 5], vel: [1.0, 0, 0] },
-      { color: 0x00ff00, pos: [-5, 0, -2.5], vel: [0.5, 0, -0.866] },
-      { color: 0x0000ff, pos: [5, 0, -2.5], vel: [-0.5, 0, 0.866] }
+      { color: 0xff0000, pos: [0, 0, 5], vel: [1.0, 0, 0], mass: 2 },
+      { color: 0x00ff00, pos: [-5, 0, -2.5], vel: [0.5, 0, -0.866], mass: 2 },
+      { color: 0x0000ff, pos: [5, 0, -2.5], vel: [-0.5, 0, 0.866], mass: 2 }
     ].forEach((spec, i) => {
+      const idx = i * 3;
+      positions[idx] = spec.pos[0];
+      positions[idx + 1] = spec.pos[1];
+      positions[idx + 2] = spec.pos[2];
+      velocities[idx] = spec.vel[0];
+      velocities[idx + 1] = spec.vel[1];
+      velocities[idx + 2] = spec.vel[2];
+      masses[i] = spec.mass;
+
       bodies[i] = {
         mesh: new THREE.Mesh(
           new THREE.SphereGeometry(1.5, 32, 32),
           new THREE.MeshBasicMaterial({ color: spec.color, transparent: true, opacity: 0.8 })
         ),
-        position: new THREE.Vector3(...spec.pos),
-        velocity: new THREE.Vector3(...spec.vel),
-        mass: 2,
         trail: [] as THREE.Vector3[]
       };
     });
 
-    bodies.forEach(body => {
-      body.mesh.position.copy(body.position);
+    // Initialize meshes
+    bodies.forEach((body, i) => {
+      const idx = i * 3;
+      body.mesh.position.set(positions[idx], positions[idx + 1], positions[idx + 2]);
       scene.add(body.mesh);
     });
 
-    // Trails
+    // Optimize trails
     const trailGeometries = bodies.map(() => new THREE.BufferGeometry());
     const trails = trailGeometries.map((geometry, i) => {
       const color = i < 3 ? bodies[i].mesh.material.color : new THREE.Color().setHSL(Math.random(), 0.7, 0.5);
       return new THREE.Line(
         geometry,
-        new THREE.LineBasicMaterial({ color, opacity: 1, transparent: true, linewidth: 2 })
+        new THREE.LineBasicMaterial({ color, opacity: 1, transparent: true })
       );
     });
     trails.forEach(trail => scene.add(trail));
 
-    // Animation Loop
+    // Optimized animation loop
     function animate() {
       animationFrameRef.current = requestAnimationFrame(animate);
       
-      bodies.forEach((body1, i) => {
-        const force = new THREE.Vector3(0, 0, 0);
+      // Update positions and velocities using TypedArrays
+      for (let i = 0; i < params.numBodies; i++) {
+        const i3 = i * 3;
+        tempForce.set(0, 0, 0);
         
-        bodies.forEach((body2, j) => {
+        for (let j = 0; j < params.numBodies; j++) {
           if (i !== j) {
-            const r = body2.position.clone().sub(body1.position);
-            const distance = r.length();
-            force.add(
-              r.normalize().multiplyScalar(params.gravitationalConstant * body1.mass * body2.mass / (distance * distance))
+            const j3 = j * 3;
+            tempVector.set(
+              positions[j3] - positions[i3],
+              positions[j3 + 1] - positions[i3 + 1],
+              positions[j3 + 2] - positions[i3 + 2]
             );
+            
+            const distance = tempVector.length();
+            const forceMagnitude = params.gravitationalConstant * masses[i] * masses[j] / (distance * distance);
+            tempVector.normalize().multiplyScalar(forceMagnitude);
+            tempForce.add(tempVector);
           }
-        });
-
-        const acceleration = force.multiplyScalar(1 / body1.mass);
-        body1.velocity.add(acceleration.multiplyScalar(params.timeStep));
-        body1.position.add(body1.velocity.clone().multiplyScalar(params.timeStep));
-        body1.mesh.position.copy(body1.position);
-
-        body1.trail.push(body1.position.clone());
-        if (body1.trail.length > params.trailLength) {
-          body1.trail.shift();
         }
-        trailGeometries[i].setFromPoints(body1.trail);
-      });
+
+        // Update velocity and position
+        tempAcceleration.copy(tempForce).multiplyScalar(1 / masses[i]);
+        tempVelocity.set(velocities[i3], velocities[i3 + 1], velocities[i3 + 2]);
+        tempVelocity.add(tempAcceleration.multiplyScalar(params.timeStep));
+        
+        velocities[i3] = tempVelocity.x;
+        velocities[i3 + 1] = tempVelocity.y;
+        velocities[i3 + 2] = tempVelocity.z;
+        
+        positions[i3] += velocities[i3] * params.timeStep;
+        positions[i3 + 1] += velocities[i3 + 1] * params.timeStep;
+        positions[i3 + 2] += velocities[i3 + 2] * params.timeStep;
+
+        // Update mesh position
+        bodies[i].mesh.position.set(positions[i3], positions[i3 + 1], positions[i3 + 2]);
+
+        // Update trail with less frequency for better performance
+        if (animationFrameRef.current % 2 === 0) {
+          bodies[i].trail.push(new THREE.Vector3(positions[i3], positions[i3 + 1], positions[i3 + 2]));
+          if (bodies[i].trail.length > params.trailLength) {
+            bodies[i].trail.shift();
+          }
+          trailGeometries[i].setFromPoints(bodies[i].trail);
+        }
+      }
 
       controls.update();
       rendererRef.current?.render(scene, camera);
     }
+
     animate();
 
     // Handle Resizing
