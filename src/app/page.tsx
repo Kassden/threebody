@@ -73,64 +73,159 @@ export default function Home() {
       ground.receiveShadow = true;
       scene.add(ground);
 
-      // Hotel Building with texture
-      const buildingGeometry = new THREE.BoxGeometry(20, 40, 15);
+      // Hotel Building Group
+      const hotelGroup = new THREE.Group();
+
+      // Main Building Structure
+      const mainBuildingGeometry = new THREE.BoxGeometry(20, 40, 15);
       const buildingMaterial = new THREE.MeshStandardMaterial({ 
         map: textures.building,
         roughness: 0.3,
         metalness: 0.2,
         normalMap: loadTexture('building_normal.jpg'),
       });
-      const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-      building.position.y = 20;
-      building.castShadow = true;
-      building.receiveShadow = true;
-      scene.add(building);
+      const mainBuilding = new THREE.Mesh(mainBuildingGeometry, buildingMaterial);
+      mainBuilding.position.y = 20;
+      mainBuilding.castShadow = true;
+      mainBuilding.receiveShadow = true;
+      hotelGroup.add(mainBuilding);
 
-      // Windows with realistic glass texture
-      const windowGeometry = new THREE.PlaneGeometry(2, 1.5);
-      const windowMaterial = new THREE.MeshPhysicalMaterial({ 
-        map: textures.windows,
-        transparent: true,
-        opacity: 0.3,
-        metalness: 0.9,
-        roughness: 0.1,
-        envMapIntensity: 1,
-        clearcoat: 1,
-        clearcoatRoughness: 0.1,
+      // Grand Entrance
+      const entranceGeometry = new THREE.BoxGeometry(8, 6, 4);
+      const entranceMaterial = new THREE.MeshStandardMaterial({
+        map: textures.building,
+        metalness: 0.5,
+        roughness: 0.2,
       });
-      
-      // Add windows to each side
-      for (let i = 0; i < 4; i++) {
-        for (let y = 0; y < 12; y++) {
-          for (let x = 0; x < (i % 2 === 0 ? 4 : 3); x++) {
-            const window = new THREE.Mesh(windowGeometry, windowMaterial);
-            window.position.y = y * 3 + 5;
-            
-            if (i === 0) {
-              window.position.z = 7.51;
-              window.position.x = (x - 1.5) * 4;
-            }
-            if (i === 1) {
-              window.position.x = 10.01;
-              window.position.z = (x - 1) * 4;
-              window.rotation.y = Math.PI / 2;
-            }
-            if (i === 2) {
-              window.position.z = -7.51;
-              window.position.x = (x - 1.5) * 4;
-            }
-            if (i === 3) {
-              window.position.x = -10.01;
-              window.position.z = (x - 1) * 4;
-              window.rotation.y = Math.PI / 2;
-            }
-            scene.add(window);
+      const entrance = new THREE.Mesh(entranceGeometry, entranceMaterial);
+      entrance.position.set(0, 3, 9.5);
+      hotelGroup.add(entrance);
+
+      // Entrance Pillars
+      const pillarGeometry = new THREE.CylinderGeometry(0.3, 0.3, 6, 8);
+      const pillarMaterial = new THREE.MeshStandardMaterial({
+        map: textures.battery, // Using metal texture for pillars
+        metalness: 0.7,
+        roughness: 0.2,
+      });
+
+      [-3, 3].forEach(x => {
+        const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
+        pillar.position.set(x, 3, 11);
+        hotelGroup.add(pillar);
+      });
+
+      // Balconies
+      const balconyGeometry = new THREE.BoxGeometry(3, 1, 2);
+      const balconyMaterial = new THREE.MeshStandardMaterial({
+        map: textures.battery,
+        metalness: 0.6,
+        roughness: 0.3,
+      });
+
+      // Add balconies to front and sides
+      for (let y = 0; y < 12; y++) {
+        for (let x = 0; x < 4; x++) {
+          if (y > 1) { // Start after 2nd floor
+            const balcony = new THREE.Mesh(balconyGeometry, balconyMaterial);
+            balcony.position.set((x - 1.5) * 4, y * 3 + 5, 8);
+            hotelGroup.add(balcony);
+
+            // Balcony railing
+            const railingGeometry = new THREE.BoxGeometry(3, 1, 0.1);
+            const railing = new THREE.Mesh(railingGeometry, balconyMaterial);
+            railing.position.set((x - 1.5) * 4, y * 3 + 6, 9);
+            hotelGroup.add(railing);
           }
         }
       }
 
-      // Solar Panels with texture
+      // Porte-cochère
+      const porteCochere = new THREE.Group();
+      
+      // Main canopy
+      const canopyGeometry = new THREE.BoxGeometry(12, 0.3, 8);
+      const canopyMaterial = new THREE.MeshStandardMaterial({
+        map: textures.battery,
+        metalness: 0.7,
+        roughness: 0.2,
+      });
+      const canopy = new THREE.Mesh(canopyGeometry, canopyMaterial);
+      canopy.position.set(0, 6, 11);
+      porteCochere.add(canopy);
+
+      // Support columns
+      [-5, 5].forEach(x => {
+        const column = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.4, 0.4, 6, 8),
+          pillarMaterial
+        );
+        column.position.set(x, 3, 14);
+        porteCochere.add(column);
+      });
+
+      hotelGroup.add(porteCochere);
+
+      // Define materials that will be reused
+      const crownMaterial = new THREE.MeshStandardMaterial({
+        map: textures.battery,
+        metalness: 0.8,
+        roughness: 0.2,
+      });
+
+      // Decorative Elements
+      
+      // Cornices between floors
+      for (let y = 1; y < 12; y++) {
+        const corniceGeometry = new THREE.BoxGeometry(20.4, 0.3, 15.4);
+        const cornice = new THREE.Mesh(corniceGeometry, crownMaterial);
+        cornice.position.y = y * 3 + 3.5;
+        hotelGroup.add(cornice);
+      }
+
+      // Corner pillars
+      const cornerPositions = [
+        [-10, 7.5], [-10, -7.5], [10, 7.5], [10, -7.5]
+      ];
+      
+      cornerPositions.forEach(([x, z]) => {
+        const cornerPillar = new THREE.Mesh(
+          new THREE.BoxGeometry(1, 40, 1),
+          buildingMaterial
+        );
+        cornerPillar.position.set(x, 20, z);
+        hotelGroup.add(cornerPillar);
+      });
+
+      // Hotel Name Sign (front of building)
+      const createHotelSign = () => {
+        const signGroup = new THREE.Group();
+        
+        const backplate = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 2, 0.2),
+          new THREE.MeshStandardMaterial({
+            map: textures.battery,
+            metalness: 0.8,
+            roughness: 0.2,
+          })
+        );
+        signGroup.add(backplate);
+
+        // Add glowing effect for night time
+        const glow = new THREE.Mesh(
+          new THREE.BoxGeometry(11.8, 1.8, 0.1),
+          new THREE.MeshBasicMaterial({ color: 0x00ffff })
+        );
+        glow.position.z = 0.2;
+        signGroup.add(glow);
+
+        signGroup.position.set(0, 35, 7.6);
+        return signGroup;
+      };
+
+      hotelGroup.add(createHotelSign());
+
+      // Modify the createSolarPanel function
       const createSolarPanel = (x: number, z: number) => {
         const frame = new THREE.BoxGeometry(3, 0.1, 2);
         const frameMaterial = new THREE.MeshStandardMaterial({ 
@@ -150,18 +245,72 @@ export default function Home() {
         solarGlass.position.y = 0.05;
         panel.add(solarGlass);
         
-        panel.position.set(x, 40.1, z);
+        // Remove the y position here since we'll set it in createSolarSection
+        panel.position.set(x, 0, z);
         panel.rotation.x = -Math.PI / 6;
         panel.castShadow = true;
         return panel;
       };
 
-      // Create rooftop solar panel array
-      for (let x = -8; x <= 8; x += 4) {
-        for (let z = -6; z <= 6; z += 3) {
-          scene.add(createSolarPanel(x, z));
+      // Modify the solar sections configuration for better roof coverage
+      const solarSections = [
+        { x: -8, z: -5, cols: 3, rows: 3 },  // Back left
+        { x: -8, z: 1, cols: 3, rows: 3 },   // Front left
+        { x: 2, z: -5, cols: 3, rows: 3 },   // Back right
+        { x: 2, z: 1, cols: 3, rows: 3 },    // Front right
+      ];
+
+      // Modify createSolarSection to position panels at correct roof height
+      const createSolarSection = (startX: number, startZ: number, columns: number, rows: number) => {
+        const section = new THREE.Group();
+        for (let x = 0; x < columns; x++) {
+          for (let z = 0; z < rows; z++) {
+            const panel = createSolarPanel(
+              startX + x * 3.2,
+              startZ + z * 2.2
+            );
+            // Adjust height to match hotel roof (40 is building height)
+            panel.position.y = 40.5; // Just above the roof terrace
+            section.add(panel);
+          }
         }
-      }
+        return section;
+      };
+
+      // Rooftop Redesign
+      const rooftopGroup = new THREE.Group();
+
+      // Rooftop terrace
+      const terraceGeometry = new THREE.BoxGeometry(22, 0.5, 17);
+      const terrace = new THREE.Mesh(terraceGeometry, buildingMaterial);
+      terrace.position.y = 40.25;
+      rooftopGroup.add(terrace);
+
+      // Technical room (center)
+      const techRoomGeometry = new THREE.BoxGeometry(8, 4, 6);
+      const techRoom = new THREE.Mesh(techRoomGeometry, buildingMaterial);
+      techRoom.position.y = 42.5;
+      rooftopGroup.add(techRoom);
+
+      // After creating all sections, add them to rooftopGroup
+      solarSections.forEach(section => {
+        const solarSection = createSolarSection(
+          section.x,
+          section.z,
+          section.cols,
+          section.rows
+        );
+        rooftopGroup.add(solarSection);
+      });
+
+      // Add decorative parapet around roof edge
+      const parapetGeometry = new THREE.BoxGeometry(24, 1.5, 19);
+      const parapet = new THREE.Mesh(parapetGeometry, buildingMaterial);
+      parapet.position.y = 41;
+      rooftopGroup.add(parapet);
+
+      // Add rooftop group to hotel
+      hotelGroup.add(rooftopGroup);
 
       // Battery units with texture
       const createBatteryUnit = (x: number) => {
@@ -235,6 +384,9 @@ export default function Home() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
       });
+
+      // Add the entire hotel group to the scene
+      scene.add(hotelGroup);
 
       return () => {
         document.body.removeChild(renderer.domElement);
