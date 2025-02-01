@@ -1,32 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import HotelScene from './components/HotelScene';
 import ThreeBodyScene from './components/ThreeBodyScene';
+import Button from './components/Button';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('hotel');
+  const [key, setKey] = useState(0);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setKey(prev => prev + 1);
+  };
 
   return (
-    <main className="w-screen h-screen">
+    <div className="relative w-screen h-screen">
+      {/* Scene Container */}
+      <div id="canvas-container" className="absolute inset-0">
+        {activeTab === 'hotel' ? (
+          <HotelScene key={`hotel-${key}`} containerId="canvas-container" />
+        ) : (
+          <ThreeBodyScene key={`threebody-${key}`} containerId="canvas-container" />
+        )}
+      </div>
+
       {/* Tab Navigation */}
-      <nav className="absolute top-0 left-0 z-10 p-4">
-        <button
-          className={`px-4 py-2 mr-2 rounded ${activeTab === 'hotel' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => setActiveTab('hotel')}
+      <nav className="relative z-50 p-4">
+        <Button
+          active={activeTab === 'hotel'}
+          onClick={() => handleTabChange('hotel')}
         >
           Solar Hotel
-        </button>
-        <button
-          className={`px-4 py-2 rounded ${activeTab === 'threebody' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-          onClick={() => setActiveTab('threebody')}
+        </Button>
+        <Button
+          active={activeTab === 'threebody'}
+          onClick={() => handleTabChange('threebody')}
         >
           Three Body
-        </button>
+        </Button>
       </nav>
-
-      {/* Scene Container */}
-      {activeTab === 'hotel' ? <HotelScene /> : <ThreeBodyScene />}
-    </main>
+    </div>
   );
 }
