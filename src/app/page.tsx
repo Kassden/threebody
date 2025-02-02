@@ -287,7 +287,7 @@ export default function Home() {
             <label className="block text-sm">Trail Length</label>
             <input
               type="range"
-              min="100"
+              min="0"
               max="1000000"
               step="100"
               value={params.trailLength}
