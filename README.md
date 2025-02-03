@@ -48,7 +48,19 @@ r̈₃ = -Gm₁(r₃ - r₁)/|r₃ - r₁|³ - Gm₂(r₃ - r₂)/|r₃ - r₂|�
 - npm or yarn
 
 ### Installation 
-Visit `http://localhost:3000` to view the simulation.
+ash
+Clone the repository
+git clone https://github.com/yourusername/n-body-simulation.git
+Navigate to project directory
+cd n-body-simulation
+Install dependencies
+npm install
+or
+yarn install
+Start the development server
+npm run dev
+or
+yarn dev
 
 ## Controls
 
